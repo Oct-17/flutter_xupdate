@@ -25,13 +25,9 @@ import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
-import io.flutter.plugin.common.PluginRegistry.Registrar;
 
 /**
- * FlutterXUpdatePlugin
- *
- * @author xuexiang
- * @since 2020-02-04 16:33
+ * FlutterXUpdatePlugin (V2 embedding)
  */
 public class FlutterXUpdatePlugin implements FlutterPlugin, ActivityAware, MethodCallHandler {
 
@@ -50,15 +46,10 @@ public class FlutterXUpdatePlugin implements FlutterPlugin, ActivityAware, Metho
 
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
-        mMethodChannel.setMethodCallHandler(null);
-        mMethodChannel = null;
-    }
-
-    public FlutterXUpdatePlugin initPlugin(MethodChannel methodChannel, Registrar registrar) {
-        mMethodChannel = methodChannel;
-        mApplication = (Application) registrar.context().getApplicationContext();
-        mActivity = new WeakReference<>(registrar.activity());
-        return this;
+        if (mMethodChannel != null) {
+            mMethodChannel.setMethodCallHandler(null);
+            mMethodChannel = null;
+        }
     }
 
     @Override
@@ -87,9 +78,6 @@ public class FlutterXUpdatePlugin implements FlutterPlugin, ActivityAware, Metho
 
     /**
      * 初始化
-     *
-     * @param call
-     * @param result
      */
     private void initXUpdate(MethodCall call, Result result) {
         Map<String, Object> map = (Map<String, Object>) call.arguments;
@@ -106,13 +94,9 @@ public class FlutterXUpdatePlugin implements FlutterPlugin, ActivityAware, Metho
 
         XUpdate.get()
                 .debug(debug)
-                //默认设置使用get请求检查版本
                 .isGet(isGet)
-                //默认设置只在wifi下检查版本更新
                 .isWifiOnly(isWifiOnly)
-                //默认设置非自动模式，可根据具体使用配置
                 .isAutoMode(isAutoMode)
-                //是否支持静默安装
                 .supportSilentInstall(supportSilentInstall)
                 .setOnUpdateFailureListener(new OnUpdateFailureListener() {
                     @Override
@@ -126,11 +110,9 @@ public class FlutterXUpdatePlugin implements FlutterPlugin, ActivityAware, Metho
                         }
                     }
                 })
-                //设置默认公共请求参数
                 .param("versionCode", UpdateUtils.getVersionCode(mApplication))
                 .param("appKey", mApplication.getPackageName())
                 .setIUpdateDownLoader(new RetryUpdateDownloader(enableRetry, retryContent, retryUrl))
-                //这个必须设置！实现网络请求功能。
                 .setIUpdateHttpService(new OKHttpUpdateHttpService(timeout, isPostJson));
         if (map.get("params") != null) {
             XUpdate.get().params((Map<String, Object>) map.get("params"));
@@ -138,18 +120,15 @@ public class FlutterXUpdatePlugin implements FlutterPlugin, ActivityAware, Metho
         XUpdate.get().init(mApplication);
 
         result.success(map);
-
     }
 
     /**
      * 版本更新
-     *
-     * @param call
-     * @param result
      */
     private void checkUpdate(MethodCall call, Result result) {
         if (mActivity == null || mActivity.get() == null) {
             result.error("1001", "Not attach a Activity", null);
+            return;
         }
 
         String url = call.argument("url");
@@ -179,20 +158,20 @@ public class FlutterXUpdatePlugin implements FlutterPlugin, ActivityAware, Metho
             builder.updateParser(new FlutterCustomUpdateParser(mMethodChannel));
         }
 
-        updatePromptStyle(builder, themeColor, topImageRes, buttonTextColor, widthRatio, heightRatio, overrideGlobalRetryStrategy, enableRetry, retryContent, retryUrl);
+        updatePromptStyle(builder, themeColor, topImageRes, buttonTextColor,
+                widthRatio, heightRatio, overrideGlobalRetryStrategy,
+                enableRetry, retryContent, retryUrl);
 
         builder.update();
     }
 
     /**
      * 直接传入UpdateEntity进行版本更新
-     *
-     * @param call
-     * @param result
      */
     private void updateByInfo(MethodCall call, Result result) {
         if (mActivity == null || mActivity.get() == null) {
             result.error("1001", "Not attach a Activity", null);
+            return;
         }
 
         HashMap<String, Object> map = call.argument("updateEntity");
@@ -212,37 +191,31 @@ public class FlutterXUpdatePlugin implements FlutterPlugin, ActivityAware, Metho
         String retryContent = call.argument("retryContent");
         String retryUrl = call.argument("retryUrl");
 
-
         UpdateManager.Builder builder = XUpdate.newBuild(mActivity.get())
                 .isAutoMode(isAutoMode)
                 .supportBackgroundUpdate(supportBackgroundUpdate);
 
-        updatePromptStyle(builder, themeColor, topImageRes, buttonTextColor, widthRatio, heightRatio, overrideGlobalRetryStrategy, enableRetry, retryContent, retryUrl);
+        updatePromptStyle(builder, themeColor, topImageRes, buttonTextColor,
+                widthRatio, heightRatio, overrideGlobalRetryStrategy,
+                enableRetry, retryContent, retryUrl);
 
         builder.build().update(updateEntity);
-
     }
 
     /**
-     * 更新弹窗的样式
-     *
-     * @param builder
-     * @param themeColor                  主题颜色
-     * @param topImageRes                 弹窗顶部的图片
-     * @param buttonTextColor             按钮文字的颜色
-     * @param widthRatio                  版本更新提示器宽度占屏幕的比例
-     * @param heightRatio                 版本更新提示器高度占屏幕的比例
-     * @param overrideGlobalRetryStrategy 是否覆盖全局的重试策略
-     * @param enableRetry                 在下载过程中，如果点击了取消的话，是否弹出切换下载方式的重试提示弹窗
-     * @param retryContent                重试提示弹窗的提示内容
-     * @param retryUrl                    重试提示弹窗点击后跳转的url
+     * 更新弹窗样式
      */
-    private void updatePromptStyle(UpdateManager.Builder builder, String themeColor, String topImageRes, String buttonTextColor, Double widthRatio, Double heightRatio, boolean overrideGlobalRetryStrategy, boolean enableRetry, String retryContent, String retryUrl) {
+    private void updatePromptStyle(UpdateManager.Builder builder, String themeColor,
+                                   String topImageRes, String buttonTextColor,
+                                   Double widthRatio, Double heightRatio,
+                                   boolean overrideGlobalRetryStrategy, boolean enableRetry,
+                                   String retryContent, String retryUrl) {
         if (!TextUtils.isEmpty(themeColor)) {
             builder.promptThemeColor(Color.parseColor(themeColor));
         }
-        if (!TextUtils.isEmpty(topImageRes)) {
-            int topImageResId = mActivity.get().getResources().getIdentifier(topImageRes, "drawable", mActivity.get().getPackageName());
+        if (!TextUtils.isEmpty(topImageRes) && mActivity != null && mActivity.get() != null) {
+            int topImageResId = mActivity.get().getResources()
+                    .getIdentifier(topImageRes, "drawable", mActivity.get().getPackageName());
             builder.promptTopResId(topImageResId);
         }
         if (!TextUtils.isEmpty(buttonTextColor)) {
@@ -259,21 +232,16 @@ public class FlutterXUpdatePlugin implements FlutterPlugin, ActivityAware, Metho
         }
     }
 
-
     /**
      * 显示重试提示弹窗
-     *
-     * @param call
-     * @param result
      */
     private void showRetryUpdateTipDialog(MethodCall call, Result result) {
         String retryContent = call.argument("retryContent");
         String retryUrl = call.argument("retryUrl");
-
         RetryUpdateTipDialog.show(retryContent, retryUrl);
     }
 
-
+    // ---------------- ActivityAware 接口 ----------------
     @Override
     public void onAttachedToActivity(ActivityPluginBinding binding) {
         mActivity = new WeakReference<>(binding.getActivity());
@@ -281,21 +249,16 @@ public class FlutterXUpdatePlugin implements FlutterPlugin, ActivityAware, Metho
 
     @Override
     public void onDetachedFromActivityForConfigChanges() {
-
+        mActivity = null;
     }
 
     @Override
     public void onReattachedToActivityForConfigChanges(ActivityPluginBinding binding) {
-
+        mActivity = new WeakReference<>(binding.getActivity());
     }
 
     @Override
     public void onDetachedFromActivity() {
         mActivity = null;
-    }
-
-    public static void registerWith(Registrar registrar) {
-        final MethodChannel channel = new MethodChannel(registrar.messenger(), PLUGIN_NAME);
-        channel.setMethodCallHandler(new FlutterXUpdatePlugin().initPlugin(channel, registrar));
     }
 }
