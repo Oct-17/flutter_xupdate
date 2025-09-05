@@ -12,13 +12,13 @@ class AppInfo {
   final int apkSize;
 
   AppInfo({
-    this.hasUpdate,
-    this.isIgnorable,
-    this.versionCode,
-    this.versionName,
-    this.updateLog,
-    this.apkUrl,
-    this.apkSize,
+    required this.hasUpdate,
+    required this.isIgnorable,
+    required this.versionCode,
+    required this.versionName,
+    required this.updateLog,
+    required this.apkUrl,
+    required this.apkSize,
   });
 
   Map<String, dynamic> toMap() {
@@ -34,8 +34,6 @@ class AppInfo {
   }
 
   static AppInfo fromMap(Map<String, dynamic> map) {
-    if (map == null) return null;
-
     return AppInfo(
       hasUpdate: map['hasUpdate'],
       isIgnorable: map['isIgnorable'],
